@@ -76,48 +76,47 @@
 /// )))
 /// }
 /// 
-/// The following unused or hidden glyphs are *not* in the translation due to not having an in-game name. If needed, refer to them by their internal name directly.
+/// The following unused or hidden glyphs and the glyphs for numbers are *not* in the translation. You can refer to them by their internal name directly.
 /// 
 /// #block(breakable: true, height: 70%, columns(2, table(
 ///   columns: (1fr, 1fr, 1fr),
 ///   align: horizon,
 ///   [*Glyph*], [*English Language Name*], [*Internal Name*],
-///   say("Devots")("Question"), [devotees], [Question],
-///   say("Devots")("Guerre"), [devotees], [Guerre],
-///   say("Devots")("Plusieurs"), [devotees], [Plusieurs],
-///   say("Devots")("Boutique"), [devotees], [Boutique],
-///   say("Devots")("Maison"), [devotees], [Maison],
-///   say("Devots")("Opticien"), [devotees], [Opticien],
-///   say("Devots")("Arme"), [devotees], [Arme],
-///   box(baseline: 25%, height: 1em, inset: (y: - (1.5em - 1em) / 2), glyphs.Bardes.boutGauche), [bards], [boutGauche],
-///   box(baseline: 25%, height: 1em, inset: (y: - (1.5em - 1em) / 2), glyphs.Bardes.boutDroite), [bards], [boutDroite],
+///   ..("Question", "Guerre", "Plusieurs", "Boutique", "Maison", "Opticien", "Arme").map(c => (say("devotees")(c), [devotees], c)).join(),
+///   ..range(0, 10).map(i => (say("alchemists")(str(i)), [alchemists], str(i))).join(),
+///   ..("boutGauche", "boutDroite").map(c => (box(baseline: 25%, height: 1em, inset: (y: - (1.5em - 1em) / 2), glyphs.Bardes.at(c)), [bards], c)).join()
 /// )))
 #let english = makeTranslation(baseDir + "translations/english.json")
 
 /// This function returns another function receiving any number of glyph names in the given language and outputs the glyphs.
 ///
-/// If an language name or glyph name is not present in the translation, it's perceived as an internal name instead.
+/// If an language name or glyph name is not present in the given translation, it's perceived as an internal name instead.
 ///
 /// Example:
 /// #example(`#say("bards")("not", "go", "warrior", "plural", "not") Warriors shall not pass.`, mode: "markup")
 ///
 /// - height (auto, relative): The height of the glyphs.
-///     Whatever the height is set to, the glyphs always take 1em in the layout.
+///     Whatever the height is set to, the glyphs always fit into text lines.
 /// - baseline (relative): An amount to shift the glyphs' baseline by.
+/// - ..args (any): These additional arguments are passed to the `box` containing the glyph images.
 /// - translation (translation, none): Translation from in-game language names and glyph names to their internal names.
 /// - lang (string): The language name of the glyphs.
 /// -> (..string) -> content
-#let say(height: 1.5em, baseline: 25%, translation: english, lang) = (..words) => {
+#let say(height: 1.25em, baseline: 25%, ..args, translation: english, lang) = (..words) => style(styles => {
   let Lang = if translation != none { translation.meta.at(default: lang, lang) } else { lang }
   let translate(word) = if translation != none { translation.at(Lang).at(default: word, word) } else { word }
 
-  let b(body) = box(baseline: baseline, height: 1em, inset: (y: - (height - 1em) / 2), body)
+  let boxHeight = measure("A", styles).height
+  let bottom = baseline * height
+  let top = height - boxHeight - bottom
 
-  if Lang == "Bardes" {
-    b(glyphs.Bardes.boutGauche)
-    words.pos().map(word => b(glyphs.Bardes.at(translate(word)))).join()
-    b(glyphs.Bardes.boutDroite)
-  } else {
-    words.pos().map(word => b(glyphs.at(Lang).at(translate(word)))).join(h(height / 10)) 
-  }
-}
+  box(height: boxHeight, inset: (top: -top , bottom: -bottom), ..args,
+    if Lang == "Bardes" {
+      box(glyphs.Bardes.boutGauche)
+      words.pos().map(word => box(glyphs.Bardes.at(translate(word)))).join()
+      box(glyphs.Bardes.boutDroite)
+    } else {
+      words.pos().map(word => box(glyphs.at(Lang).at(translate(word)))).join(h(height / 10)) 
+    }
+  )
+})
